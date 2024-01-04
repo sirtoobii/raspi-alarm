@@ -51,10 +51,12 @@ class TelegramBot:
                 if isinstance(item, dict):
                     if "image_path" in item:
                         await self.notify_motion_detected(item.get("image_path"))
-                        print("Image sent")
+                        self.logger.info("Image sent")
                     if "terminate" in item:
+                        self.logger.info("Termination request received")
                         asyncio.get_event_loop().stop()
             await asyncio.sleep(1)
 
     async def start(self):
+        self.logger.info("Staring Telegram Bot")
         await asyncio.gather(self.dp.start_polling(self.bot), self.poll_ipc_queue())

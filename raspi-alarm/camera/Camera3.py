@@ -20,10 +20,10 @@ class Camera3:
             cv2.putText(m.array, ts, (0, 50), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 2)
 
     def capture_image(self, path: str, add_timestamp: bool = True, n_images=1):
-        self.picam2.configure(self.picam2.still_configuration())
+        self.picam2.configure(self.picam2.still_configuration)
         self.picam2.pre_callback = self._apply_timestamp
         self.picam2.start()
-        self.picam2.capture_file("demo.jpg")
+        self.picam2.capture_file(path)
         self.picam2.stop()
 
     def capture_and_stream(self, path: str, destination_addr, destination_port: int):

@@ -52,6 +52,8 @@ class TelegramBot:
                     if "image_path" in item:
                         await self.notify_motion_detected(item.get("image_path"))
                         print("Image sent")
+                    if "terminate" in item:
+                        asyncio.get_event_loop().stop()
             await asyncio.sleep(1)
 
     async def start(self):

@@ -28,9 +28,16 @@ def motion_detected(gpio, level, tick):
     image_filename = f"capture_{date_str}.jpg"
     camera.capture_image(image_filename)
     print("Image captured")
-    queue.put({"image_path": image_filename})
+    queue.put_nowait({"image_path": image_filename})
 
 
 pir = Pir(interrupt_pin=17, pi=pi, callback_fn=motion_detected)
 
-asyncio.run(telegram.start())
+try:
+    asyncio.run(telegram.start())
+except KeyboardInterrupt:
+    queue.put_nowait({"terminate": True})
+    pir.stop()
+finally:
+    queue.put_nowait({"terminate": True})
+    pir.stop()

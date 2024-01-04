@@ -49,18 +49,29 @@ def motion_detected(gpio, level, tick):
 pir = Pir(interrupt_pin=17, pi=pi, callback_fn=motion_detected)
 
 
-def signal_handler(sig, frame):
-    logger.warning("SIGINT received, exiting..")
-    queue.put_nowait({"terminate": True})
+async def signal_handler(received_signal, running_loop):
+    logger.info(f"Received exit signal {received_signal.name}...")
+    tasks = [t for t in asyncio.all_tasks() if t is not
+             asyncio.current_task()]
+
+    [task.cancel() for task in tasks]
+    await asyncio.gather(*tasks, return_exceptions=True)
+    await asyncio.sleep(1)
     pir.stop()
-    asyncio.get_event_loop().stop()
+    running_loop.stop()
     logger.info("Bye")
-    sys.exit(0)
 
-
-signal.signal(signal.SIGINT, signal_handler)
-signal.pause()
 
 if __name__ == '__main__':
+    loop = asyncio.get_event_loop()
     logger.info("Starting...")
-    asyncio.run(telegram.start())
+
+    start_task = loop.create_task(telegram.start(), name="Telegram Bot Wrapper")
+
+    for sig in [signal.SIGHUP, signal.SIGTERM, signal.SIGINT]:
+        loop.add_signal_handler(sig, lambda s=sig: asyncio.create_task(signal_handler(s, loop)))
+
+    try:
+        loop.run_forever()
+    finally:
+        loop.close()

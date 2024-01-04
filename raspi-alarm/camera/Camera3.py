@@ -49,8 +49,3 @@ class Camera3:
         self.picam2.start_recording(encoder, path)
         time.sleep(duration_secs)
         self.picam2.stop_recording()
-
-
-if __name__ == '__main__':
-    c = Camera3()
-    c.capture_and_stream("local.h264", "192.168.178.163", 5004)

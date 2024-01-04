@@ -1,6 +1,7 @@
 import asyncio
 import datetime
 import logging
+import signal
 
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.enums import ParseMode
@@ -18,6 +19,7 @@ class TelegramBot:
         self.ipc_queue = ipc_queue
         self.chat_id = chat_id
         self.bot = Bot(bot_token, parse_mode=ParseMode.HTML)
+        self.tasks = []
 
     async def notify_motion_detected(self, image_path: str):
         builder = InlineKeyboardBuilder()
@@ -54,9 +56,14 @@ class TelegramBot:
                         self.logger.info("Image sent")
                     if "terminate" in item:
                         self.logger.info("Termination request received")
-                        asyncio.get_event_loop().stop()
+                        for task in self.tasks:
+                            task.cancel()
+                        await asyncio.sleep(1)
             await asyncio.sleep(1)
 
     async def start(self):
         self.logger.info("Staring Telegram Bot")
-        await asyncio.gather(self.dp.start_polling(self.bot), self.poll_ipc_queue())
+        bot = asyncio.create_task(self.dp.start_polling(self.bot, handle_signals=False), name='Telegram Bot')
+        ipc = asyncio.create_task(self.poll_ipc_queue(), name='IPC')
+        self.tasks = [bot, ipc]
+        await asyncio.gather(*self.tasks)

@@ -1,3 +1,5 @@
 numpy
 picamera2
 aiogram
+opencv-python
+python-dotenv

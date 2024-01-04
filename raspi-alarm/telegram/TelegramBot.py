@@ -1,3 +1,4 @@
+import asyncio
 import datetime
 import logging
 
@@ -12,8 +13,9 @@ class TelegramBot:
     storage = MemoryStorage()
     dp = Dispatcher()
 
-    def __init__(self, bot_token: str, logger: logging.Logger, chat_id: str):
+    def __init__(self, bot_token: str, logger: logging.Logger, chat_id: str, ipc_queue: asyncio.Queue):
         self.logger = logger
+        self.ipc_queue = ipc_queue
         self.chat_id = chat_id
         self.bot = Bot(bot_token, parse_mode=ParseMode.HTML)
 
@@ -32,15 +34,25 @@ class TelegramBot:
 
     @staticmethod
     @dp.callback_query(F.data == "disarm")
-    async def share_contact(callback: types.CallbackQuery):
+    async def disarm(callback: types.CallbackQuery):
         chat_id = callback.message.chat.id
         await callback.bot.send_message(chat_id, f"Disarmed by {callback.from_user.full_name}")
 
     @staticmethod
     @dp.callback_query(F.data == "make_noise")
-    async def share_contact(callback: types.CallbackQuery):
+    async def make_noise(callback: types.CallbackQuery):
         chat_id = callback.message.chat.id
         await callback.bot.send_message(chat_id, f"Noise started by {callback.from_user.full_name}")
 
+    async def poll_ipc_queue(self):
+        while True:
+            item = await self.ipc_queue.get()
+            if item is not None:
+                if isinstance(item, dict):
+                    if "image_path" in item:
+                        await self.notify_motion_detected(item.get("image_path"))
+                        print("Image sent")
+            await asyncio.sleep(1)
+
     async def start(self):
-        await self.dp.start_polling(self.bot)
+        await asyncio.gather(self.dp.start_polling(self.bot), self.poll_ipc_queue())

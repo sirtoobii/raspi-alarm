@@ -1,12 +1,13 @@
 import asyncio
 import datetime
 import signal
-import sys
+import time
+
 import pigpio
 import os
 import logging
 from dotenv import load_dotenv
-from relay_board.on_off import RelayBoard
+from relay_board.on_off import GPIOBridge
 from pir_sensor.motion_detect import Pir
 from camera.Camera3 import Camera3
 from telegram.TelegramBot import TelegramBot
@@ -32,18 +33,33 @@ ch.setFormatter(formatter)
 logger.addHandler(ch)
 queue = asyncio.Queue()
 pi = pigpio.pi()
-relay_board = RelayBoard(pi=pi)
+relay_board = GPIOBridge(pi=pi)
 camera = Camera3()
-telegram = TelegramBot(bot_token=TELEGRAM_BOT_TOKEN, chat_id=TELEGRAM_GROUP_ID, ipc_queue=queue, logger=logger)
+
+
+def disarm_callback():
+    pass
+
+
+def make_noise_callback():
+    relay_board.make_noise(duration=1)
+
+
+telegram = TelegramBot(bot_token=TELEGRAM_BOT_TOKEN, chat_id=TELEGRAM_GROUP_ID, ipc_queue=queue, logger=logger,
+                       disarm_callback=disarm_callback, make_noise_callback=make_noise_callback)
 
 
 def motion_detected(gpio, level, tick):
     logger.info("Motion detected")
+    relay_board.set_led(2, True)
     date_str = datetime.datetime.now().strftime("%d%m%d-%H%M%S")
     image_filename = f"capture_{date_str}.jpg"
     camera.capture_image(image_filename)
     logger.info(f"Image captured {image_filename}")
     queue.put_nowait({"image_path": image_filename})
+    time.sleep(5)
+    relay_board.set_led(2, False)
+
 
 
 pir = Pir(interrupt_pin=17, pi=pi, callback_fn=motion_detected)
@@ -57,6 +73,7 @@ async def signal_handler(received_signal, running_loop):
     [task.cancel() for task in tasks]
     await asyncio.gather(*tasks, return_exceptions=True)
     await asyncio.sleep(1)
+    relay_board.set_led(1, False)  # OFF
     pir.stop()
     running_loop.stop()
     logger.info("Bye")
@@ -67,6 +84,7 @@ if __name__ == '__main__':
     logger.info("Starting...")
 
     start_task = loop.create_task(telegram.start(), name="Telegram Bot Wrapper")
+    relay_board.set_led(1, True)  # ON
 
     for sig in [signal.SIGHUP, signal.SIGTERM, signal.SIGINT]:
         loop.add_signal_handler(sig, lambda s=sig: asyncio.create_task(signal_handler(s, loop)))

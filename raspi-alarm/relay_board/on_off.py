@@ -11,7 +11,7 @@ class GPIOBridge:
 
     LED1 = 19  # Running
     LED2 = 13  # Motion Detected
-    LED3 = 6  # Armed
+    LED3 = 16  # Armed
 
     PIEZO = 4
 

@@ -1,29 +1,32 @@
 import asyncio
 import datetime
 import logging
-import signal
-from typing import Callable, Any
+from typing import Callable
 
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.enums import ParseMode
-from aiogram.filters.callback_data import CallbackData
-from aiogram.types import FSInputFile
+from aiogram.filters import CommandObject, Command
+from aiogram.types import FSInputFile, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-
+from aiogram.utils.markdown import hbold
 
 CALLBACKS = {}
+
 
 class TelegramBot:
     dp = Dispatcher()
 
     def __init__(self, bot_token: str, logger: logging.Logger, chat_id: str, ipc_queue: asyncio.Queue,
-                 disarm_callback: Callable, make_noise_callback: Callable):
+                 disarm_callback: Callable, make_noise_callback: Callable, status_callback: Callable,
+                 arm_callback: Callable):
         self.logger = logger
         self.ipc_queue = ipc_queue
         self.chat_id = chat_id
         self.bot = Bot(bot_token, parse_mode=ParseMode.HTML)
         CALLBACKS['disarm'] = disarm_callback
         CALLBACKS['make_noise'] = make_noise_callback
+        CALLBACKS['status'] = status_callback
+        CALLBACKS['arm'] = arm_callback
         self.disarm_callback = disarm_callback
         self.make_noise_callback = make_noise_callback
         self.tasks = []
@@ -48,6 +51,7 @@ class TelegramBot:
         await self.bot.send_photo(self.chat_id, photo=photo, caption=f"{datetime.datetime.now()}",
                                   reply_markup=builder.as_markup())
 
+    @staticmethod
     @dp.callback_query(F.data == "make_noise")
     async def make_noise(callback: types.CallbackQuery):
         CALLBACKS['make_noise']()
@@ -68,6 +72,22 @@ class TelegramBot:
                             task.cancel()
                         await asyncio.sleep(1)
             await asyncio.sleep(1)
+
+    @staticmethod
+    @dp.message(Command("status"))
+    async def command_status_handler(message: Message) -> None:
+        result = CALLBACKS['status']()
+        if result['armed']:
+            msg = f"🟢 {hbold('Armed')}"
+        else:
+            msg = f"🔴 {hbold('Disarmed')}"
+        await message.answer(msg)
+
+    @staticmethod
+    @dp.message(Command("arm"))
+    async def command_arm_handler(message: Message) -> None:
+        CALLBACKS['arm']()
+        await message.answer(f"🟢 {hbold('Armed')}")
 
     async def start(self):
         self.logger.info("Staring Telegram Bot")

@@ -1,5 +1,6 @@
 import asyncio
 import time
+import threading
 from typing import Callable
 
 import pigpio
@@ -59,16 +60,16 @@ class GPIOBridge:
     def make_noise(self, duration: int = 5):
         self._fire_and_forget(duration, self._oscillate_gpio, [self.PIEZO, 500, 500])
 
-    def _keep_on_for(self, gpio_pin: int, duration_sec: int):
-        self.pi.write(gpio_pin, True)
+    def _keep_on_for(self, duration_sec: int, gpio_pin: int, state: bool):
+        self.pi.write(gpio_pin, state)
         time.sleep(duration_sec)
-        self.pi.write(gpio_pin, False)
+        self.pi.write(gpio_pin, not state)
 
     def set_channel(self, channel_nr: int, state: bool, duration: int = -1):
         relay_gpio = self.RELAYS.get(channel_nr, None)
         if relay_gpio is not None:
             if duration != -1:
-                self._fire_and_forget(duration, self._keep_on_for, [relay_gpio])
+                self._fire_and_forget(duration, self._keep_on_for, [relay_gpio, not state])
             else:
                 self.pi.write(relay_gpio, not state)
         else:
@@ -79,4 +80,6 @@ if __name__ == '__main__':
     pi = pigpio.pi()
     rb = GPIOBridge(pi=pi)
 
-    rb.make_noise()
+    rb.set_channel(2, True, 2)
+    time.sleep(2)
+    pi.stop()

@@ -23,12 +23,18 @@ class Camera3:
         if add_timestamp:
             self.picam2.pre_callback = self._apply_timestamp
         file_path = os.path.join(storage_dir, file_prefix + "_{:03d}.jpg")
+        image_paths = [file_path.format(i) for i in range(n_images)]
+        self.picam2.configure(still_config)
+
         # Wait a short moment until the camera is ready (otherwise the first image is just black)
         time.sleep(0.1)
-        self.picam2.start_and_capture_files(file_path, num_files=n_images, delay=0.2, show_preview=False,
-                                            initial_delay=0, capture_mode=still_config)
+        self.picam2.start(show_preview=False)
+        for image_path in image_paths:
+            self.picam2.capture_file(image_path)
+            time.sleep(0.5)
+
         self.picam2.stop()
-        return [file_path.format(i) for i in range(n_images)]
+        return image_paths
 
     def capture_and_stream(self, path: str, duration_secs: int, destination_addr, destination_port: int):
         video_config = self.picam2.create_video_configuration(

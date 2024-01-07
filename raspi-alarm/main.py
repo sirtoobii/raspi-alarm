@@ -19,7 +19,7 @@ logger = logging.getLogger('Alarm PI')
 logger.setLevel(logging.INFO)
 ch = logging.StreamHandler()
 ch.setLevel(logging.INFO)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+formatter = logging.Formatter('%(name)s %(levelname)s %(message)s')
 ch.setFormatter(formatter)
 logger.addHandler(ch)
 
@@ -79,10 +79,10 @@ telegram = TelegramBot(bot_token=TELEGRAM_BOT_TOKEN, chat_id=TELEGRAM_GROUP_ID, 
 def motion_detected(gpio, level, tick):
     if STATE['armed']:
         logger.info("Motion detected")
-        relay_board.set_led(2, True, duration_secs=10, blink=True)
         relay_board.set_channel(1, True, duration=10)
+        relay_board.set_led(2, True, duration_secs=10, blink=True)
         date_str = datetime.datetime.now().strftime("%d%m%d-%H%M%S")
-        image_filenames = camera.capture_images('../captures', date_str, 3)
+        image_filenames = camera.capture_images('../captures', date_str, 4)
         queue.put_nowait({"image_paths": image_filenames})
 
 

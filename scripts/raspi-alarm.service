@@ -1,0 +1,14 @@
+[Unit]
+Description=Raspi Alarm System
+After=network.target
+Wants=network-online.target
+
+[Service]
+Restart=always
+Type=simple
+ExecStart=/home/pi/raspi-alarm/venv/bin/python3 /home/pi/raspi-alarm/raspi-alarm/main.py
+User=pi
+Group=pi
+
+[Install]
+WantedBy=multi-user.target

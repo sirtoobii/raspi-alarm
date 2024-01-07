@@ -81,8 +81,9 @@ def motion_detected(gpio, level, tick):
         logger.info("Motion detected")
         relay_board.set_channel(1, True, duration=10)
         relay_board.set_led(2, True, duration_secs=10, blink=True)
+        os.path.dirname(os.path.abspath(__file__)) + '../captures'
         date_str = datetime.datetime.now().strftime("%d%m%d-%H%M%S")
-        image_filenames = camera.capture_images('../captures', date_str, 4)
+        image_filenames = camera.capture_images(os.path.dirname(os.path.abspath(__file__)) + '/../captures', date_str, 4)
         queue.put_nowait({"image_paths": image_filenames})
 
 

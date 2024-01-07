@@ -7,7 +7,7 @@ import pigpio
 import os
 import logging
 from dotenv import load_dotenv
-from relay_board.on_off import GPIOBridge
+from gpio.GPIOBridge import GPIOBridge
 from camera.Camera3 import Camera3
 from telegram.TelegramBot import TelegramBot
 
@@ -79,15 +79,11 @@ telegram = TelegramBot(bot_token=TELEGRAM_BOT_TOKEN, chat_id=TELEGRAM_GROUP_ID, 
 def motion_detected(gpio, level, tick):
     if STATE['armed']:
         logger.info("Motion detected")
-        relay_board.set_led(2, True)
+        relay_board.set_led(2, True, duration_secs=10, blink=True)
+        relay_board.set_channel(1, True, duration=10)
         date_str = datetime.datetime.now().strftime("%d%m%d-%H%M%S")
-        image_filename = f"capture_{date_str}.jpg"
-        time.sleep(1)
-        camera.capture_image(image_filename)
-        logger.info(f"Image captured {image_filename}")
-        queue.put_nowait({"image_path": image_filename})
-        time.sleep(5)
-        relay_board.set_led(2, False)
+        image_filenames = camera.capture_images('../captures', date_str, 3)
+        queue.put_nowait({"image_paths": image_filenames})
 
 
 def button_pressed(gpio, level, tick):
@@ -103,7 +99,7 @@ motion_callback = pi.callback(PIR, pigpio.RISING_EDGE, motion_detected)
 # Button
 pi.set_mode(BUTTON, pigpio.INPUT)
 pi.set_pull_up_down(BUTTON, pigpio.PUD_UP)
-pi.set_glitch_filter(BUTTON, 100)
+pi.set_glitch_filter(BUTTON, 150)
 button_callback = pi.callback(BUTTON, pigpio.FALLING_EDGE, button_pressed)
 
 

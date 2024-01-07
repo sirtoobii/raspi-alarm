@@ -6,11 +6,12 @@ from typing import Callable
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.enums import ParseMode
 from aiogram.filters import CommandObject, Command
-from aiogram.types import FSInputFile, Message
+from aiogram.types import FSInputFile, Message, InputMediaPhoto
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.utils.markdown import hbold
 
 CALLBACKS = {}
+ALLOWED_CHAT_IDS = set()
 
 
 class TelegramBot:
@@ -22,6 +23,7 @@ class TelegramBot:
         self.logger = logger
         self.ipc_queue = ipc_queue
         self.chat_id = chat_id
+        ALLOWED_CHAT_IDS.add(int(chat_id))
         self.bot = Bot(bot_token, parse_mode=ParseMode.HTML)
         CALLBACKS['disarm'] = disarm_callback
         CALLBACKS['make_noise'] = make_noise_callback
@@ -32,13 +34,15 @@ class TelegramBot:
         self.tasks = []
 
     @staticmethod
-    @dp.callback_query(F.data == "disarm")
+    @dp.callback_query((F.message.chat.id.in_(ALLOWED_CHAT_IDS) & F.data == "disarm"))
     async def disarm(callback: types.CallbackQuery):
-        CALLBACKS['disarm']()
-        chat_id = callback.message.chat.id
-        await callback.bot.send_message(chat_id, f"Disarmed by {callback.from_user.full_name}")
+        result = CALLBACKS['status']()
+        if result['armed']:
+            CALLBACKS['disarm']()
+            chat_id = callback.message.chat.id
+            await callback.bot.send_message(chat_id, f"🔴 {hbold('Disarmed')} by {callback.from_user.full_name}")
 
-    async def notify_motion_detected(self, image_path: str):
+    async def notify_motion_detected(self, image_paths: list):
         builder = InlineKeyboardBuilder()
         builder.add(types.InlineKeyboardButton(
             text="Disarm",
@@ -47,34 +51,29 @@ class TelegramBot:
                 text="Make Noise",
                 callback_data="make_noise")
         )
-        photo = FSInputFile(image_path)
-        await self.bot.send_photo(self.chat_id, photo=photo, caption=f"{datetime.datetime.now()}",
-                                  reply_markup=builder.as_markup())
+        photos = [InputMediaPhoto(media=FSInputFile(image_path)) for image_path in image_paths]
+        await self.bot.send_media_group(self.chat_id, media=photos)
+        await self.bot.send_message(self.chat_id, "Motion detected!", reply_markup=builder.as_markup())
 
     @staticmethod
-    @dp.callback_query(F.data == "make_noise")
+    @dp.callback_query((F.message.chat.id.in_(ALLOWED_CHAT_IDS) & F.data == "make_noise"))
     async def make_noise(callback: types.CallbackQuery):
         CALLBACKS['make_noise']()
         chat_id = callback.message.chat.id
-        await callback.bot.send_message(chat_id, f"Noise started by {callback.from_user.full_name}")
+        await callback.bot.send_message(chat_id, f"🔊 Noise started by {callback.from_user.full_name}")
 
     async def poll_ipc_queue(self):
         while True:
             item = await self.ipc_queue.get()
             if item is not None:
                 if isinstance(item, dict):
-                    if "image_path" in item:
-                        await self.notify_motion_detected(item.get("image_path"))
-                        self.logger.info("Image sent")
-                    if "terminate" in item:
-                        self.logger.info("Termination request received")
-                        for task in self.tasks:
-                            task.cancel()
-                        await asyncio.sleep(1)
+                    if "image_paths" in item:
+                        await self.notify_motion_detected(item.get("image_paths"))
+                        self.logger.info("Images sent")
             await asyncio.sleep(1)
 
     @staticmethod
-    @dp.message(Command("status"))
+    @dp.message(F.chat.id.in_(ALLOWED_CHAT_IDS), Command("status"))
     async def command_status_handler(message: Message) -> None:
         result = CALLBACKS['status']()
         if result['armed']:
@@ -84,7 +83,7 @@ class TelegramBot:
         await message.answer(msg)
 
     @staticmethod
-    @dp.message(Command("arm"))
+    @dp.message(F.chat.id.in_(ALLOWED_CHAT_IDS), Command("arm"))
     async def command_arm_handler(message: Message) -> None:
         CALLBACKS['arm']()
         await message.answer(f"🟢 {hbold('Armed')}")

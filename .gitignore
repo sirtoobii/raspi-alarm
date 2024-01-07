@@ -2,3 +2,6 @@ venv
 .idea
 .env
 playground.py
+__pycache__*
+caputures/*
+!caputures/.do_not_ignore

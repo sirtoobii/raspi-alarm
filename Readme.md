@@ -1,6 +1,6 @@
-# Rasperberry PI Alarm
+# Raspberry PI Alarm
 
-
+Yet another Raspberry PI alarm system. 
 
 ## OS requirements
 

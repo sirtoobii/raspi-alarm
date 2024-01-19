@@ -16,7 +16,8 @@ class Camera3:
         with MappedArray(request, "main") as m:
             cv2.putText(m.array, ts, (0, 50), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 2)
 
-    def capture_images(self, storage_dir: str, file_prefix: str, n_images=1, add_timestamp: bool = True) -> list:
+    def capture_images(self, storage_dir: str, file_prefix: str, n_images=1, add_timestamp: bool = True,
+                       wait_between_images: int = 1) -> list:
         transform = Transform(hflip=1, vflip=1)
         still_config = self.picam2.create_still_configuration(transform=transform)
 
@@ -31,7 +32,7 @@ class Camera3:
         self.picam2.start(show_preview=False)
         for image_path in image_paths:
             self.picam2.capture_file(image_path)
-            time.sleep(0.5)
+            time.sleep(wait_between_images)
 
         self.picam2.stop()
         return image_paths

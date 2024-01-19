@@ -1,5 +1,4 @@
 import asyncio
-import datetime
 import logging
 from typing import Callable
 
@@ -53,7 +52,8 @@ class TelegramBot:
         )
         photos = [InputMediaPhoto(media=FSInputFile(image_path)) for image_path in image_paths]
         await self.bot.send_media_group(self.chat_id, media=photos)
-        await self.bot.send_message(self.chat_id, "Motion detected!", reply_markup=builder.as_markup())
+        await self.bot.send_message(self.chat_id, f"🚨{hbold('ALARM Motion detected!')}🚨",
+                                    reply_markup=builder.as_markup())
 
     @staticmethod
     @dp.callback_query((F.message.chat.id.in_(ALLOWED_CHAT_IDS) & F.data == "make_noise"))

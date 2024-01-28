@@ -88,6 +88,12 @@ class TelegramBot:
         CALLBACKS['arm']()
         await message.answer(f"🟢 {hbold('Armed')}")
 
+    @staticmethod
+    @dp.message(F.chat.id.in_(ALLOWED_CHAT_IDS), Command("disarm"))
+    async def command_arm_handler(message: Message) -> None:
+        CALLBACKS['disarm']()
+        await message.answer(f"🔴 {hbold('Disarmed')}")
+
     async def start(self):
         self.logger.info("Staring Telegram Bot")
         bot = asyncio.create_task(self.dp.start_polling(self.bot, handle_signals=False), name='Telegram Bot')

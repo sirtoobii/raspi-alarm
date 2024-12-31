@@ -51,6 +51,10 @@ def _getMSSISM(i1, i2):
     return mssim
 
 
+def _crop_top_percent(img: np.ndarray, percent: int):
+    return img[int(img.shape[0] * (percent / 100)):img.shape[0], :img.shape[1]]
+
+
 def _calc_confidence(value: float, alarm_threshold: float) -> float:
     delta = abs(alarm_threshold - value)
     if delta > 0.1:
@@ -60,10 +64,11 @@ def _calc_confidence(value: float, alarm_threshold: float) -> float:
 
 
 def calculate_ssim_score(raw_rgb_images: List[np.ndarray], resize_factor: float = 0.1,
-                         alarm_threshold: float = 0.9) -> float:
+                         alarm_threshold: float = 0.9, crop_top_percent: int = 0) -> float:
     """
     Calculate if a set of images is similar or not
 
+    :param crop_top_percent: Crop N percent from top
     :param raw_rgb_images: List of raw, rgb images
     :param resize_factor: Scale down factor
     :param alarm_threshold: SSIM scores lower than this number will be threted as dissimilar
@@ -74,8 +79,11 @@ def calculate_ssim_score(raw_rgb_images: List[np.ndarray], resize_factor: float 
     preprocessed_images = []
     for raw_image in raw_rgb_images:
         img_gray = cv.cvtColor(raw_image, cv.COLOR_BGR2GRAY)
+        if crop_top_percent != 0:
+            img_gray = _crop_top_percent(img_gray, crop_top_percent)
         img_scaled = cv.resize(img_gray, None, fx=resize_factor, fy=resize_factor, interpolation=cv.INTER_LINEAR)
         img_equ = cv.equalizeHist(img_scaled)
+
         preprocessed_images.append(img_equ)
 
     # calculate scores

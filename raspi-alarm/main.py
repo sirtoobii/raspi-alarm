@@ -16,6 +16,7 @@ load_dotenv()
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_GROUP_ID = os.getenv("TELEGRAM_GROUP_ID")
 SSIM_THRESHOLD = os.getenv("SSIM_THRESHOLD", 0.9)
+CROP_TO_N_PERCENT = os.getenv("CROP_TO_N_PERCENT", 0)
 
 logger = logging.getLogger('Alarm PI')
 logger.setLevel(logging.INFO)
@@ -88,7 +89,8 @@ def motion_detected(gpio, level, tick):
         date_str = datetime.datetime.now().strftime("%d%m%d-%H%M%S")
         image_filenames = camera.capture_images(os.path.dirname(os.path.abspath(__file__)) + '/../captures', date_str,
                                                 4)
-        if (confidence_score := calculate_ssim_score(camera.get_last_raw_images(), alarm_threshold=SSIM_THRESHOLD)) > 0:
+        if (confidence_score := calculate_ssim_score(camera.get_last_raw_images(), alarm_threshold=SSIM_THRESHOLD,
+                                                     crop_top_percent=CROP_TO_N_PERCENT)) > 0:
             queue.put_nowait({"image_paths": image_filenames, "confidence_score": confidence_score})
         else:
             logger.info("No notifications sent due to SSIM result")

@@ -24,6 +24,7 @@ class Camera3:
 
     def capture_images(self, storage_dir: str, file_prefix: str, n_images=1, add_timestamp: bool = True,
                        wait_between_images: int = 1) -> list:
+        self._raw_images.clear()
         transform = Transform(hflip=1, vflip=1)
         still_config = self.picam2.create_still_configuration(transform=transform)
 

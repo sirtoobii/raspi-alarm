@@ -1,28 +1,34 @@
 import os
+from typing import List
+
 from libcamera import Transform
 from picamera2 import Picamera2, MappedArray
 from picamera2.encoders import H264Encoder
 from picamera2.outputs import FileOutput, FfmpegOutput
 import cv2
 import time
+import numpy as np
 
 
 class Camera3:
     picam2 = Picamera2()
+    _raw_images: List[np.ndarray] = []
+    _should_add_timestamp: bool = True
 
-    @staticmethod
-    def _apply_timestamp(request):
-        ts = time.strftime("%d.%m.%Y %X%z")
+    def _pre_compress_callback(self, request):
         with MappedArray(request, "main") as m:
-            cv2.putText(m.array, ts, (0, 50), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 2)
+            self._raw_images.append(m.array)
+            if self._should_add_timestamp:
+                ts = time.strftime("%d.%m.%Y %X%z")
+                cv2.putText(m.array, ts, (0, 50), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 2)
 
     def capture_images(self, storage_dir: str, file_prefix: str, n_images=1, add_timestamp: bool = True,
                        wait_between_images: int = 1) -> list:
         transform = Transform(hflip=1, vflip=1)
         still_config = self.picam2.create_still_configuration(transform=transform)
 
-        if add_timestamp:
-            self.picam2.pre_callback = self._apply_timestamp
+        self._should_add_timestamp = add_timestamp
+        self.picam2.pre_callback = self._pre_compress_callback
         file_path = os.path.join(storage_dir, file_prefix + "_{:03d}.jpg")
         image_paths = [file_path.format(i) for i in range(n_images)]
         self.picam2.configure(still_config)
@@ -37,6 +43,13 @@ class Camera3:
         self.picam2.stop()
         return image_paths
 
+    def get_last_raw_images(self) -> List[np.ndarray]:
+        """
+        Get last captured images as a list of ndarrys. (Warning, the list contains references and not copies)
+        :return: Possibly empty list of raw images
+        """
+        return self._raw_images
+
     def capture_and_stream(self, path: str, duration_secs: int, destination_addr, destination_port: int):
         video_config = self.picam2.create_video_configuration(
             main={"size": (1920, 1080), "format": "RGB888"},
@@ -45,7 +58,7 @@ class Camera3:
 
         local_encoder = H264Encoder(10000000)
         stream_encoder = H264Encoder(10000000)
-        self.picam2.pre_callback = self._apply_timestamp
+        self.picam2.pre_callback = self._pre_compress_callback
         self.picam2.start_recording(stream_encoder,
                                     FfmpegOutput(f"-f mpegts udp://{destination_addr}:{destination_port}"),
                                     name="lores")
@@ -56,7 +69,7 @@ class Camera3:
     def capture_video(self, duration_secs: int, path: str):
         self.picam2.configure(self.picam2.create_video_configuration(main={"size": (1920, 1080), "format": "RGB888"},
                                                                      transform=libcamera.Transform(hflip=1, vflip=1)))
-        self.picam2.pre_callback = self._apply_timestamp
+        self.picam2.pre_callback = self._pre_compress_callback
         encoder = H264Encoder(10000000)
         self.picam2.start_recording(encoder, path)
         time.sleep(duration_secs)

@@ -41,7 +41,7 @@ class TelegramBot:
             chat_id = callback.message.chat.id
             await callback.bot.send_message(chat_id, f"🔴 {hbold('Disarmed')} by {callback.from_user.full_name}")
 
-    async def notify_motion_detected(self, image_paths: list):
+    async def notify_motion_detected(self, image_paths: list, confidence_level: float = 1.0):
         builder = InlineKeyboardBuilder()
         builder.add(types.InlineKeyboardButton(
             text="Disarm",
@@ -52,7 +52,7 @@ class TelegramBot:
         )
         photos = [InputMediaPhoto(media=FSInputFile(image_path)) for image_path in image_paths]
         await self.bot.send_media_group(self.chat_id, media=photos)
-        await self.bot.send_message(self.chat_id, f"🚨{hbold('ALARM Motion detected!')}🚨",
+        await self.bot.send_message(self.chat_id, f"🚨{hbold('ALARM Motion detected!')} C={round(confidence_level*100,0)}%🚨",
                                     reply_markup=builder.as_markup())
 
     @staticmethod
@@ -68,7 +68,7 @@ class TelegramBot:
             if item is not None:
                 if isinstance(item, dict):
                     if "image_paths" in item:
-                        await self.notify_motion_detected(item.get("image_paths"))
+                        await self.notify_motion_detected(item.get("image_paths"), item.get("confidence_level"))
                         self.logger.info("Images sent")
             await asyncio.sleep(1)
 

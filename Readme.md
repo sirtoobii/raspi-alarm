@@ -2,7 +2,9 @@
 
 Yet another Raspberry PI alarm system. It monitors an area using a passive infrared sensor and if motion is detected,
 the camara captures 4 pictures which are then sent to a configurable Telegram group or user.
-Moreover, the system's main functions are controlled using a Telegram bot.
+Moreover, the system's main functions are controlled using a Telegram bot. In order to further bring down the number of
+_ghosts_ (aka false positives), SSIM is used to measure the similarity of the captured images and notification is inhibited
+if not meeting the configurable threshold value.
 
 ![overview.png](img/overview.png)
 
@@ -14,7 +16,7 @@ with the GPIO.
 
 ## Used hardware
 
-- Raspberry PI >4
+- Raspberry PI 4 (Raspi5 untested)
 - Camera Module 3
 - Passive infrared motion sensor
 - Physical push button

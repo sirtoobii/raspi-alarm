@@ -10,10 +10,12 @@ from dotenv import load_dotenv
 from gpio.GPIOBridge import GPIOBridge
 from camera.Camera3 import Camera3
 from telegram.TelegramBot import TelegramBot
+from analize.ssim import calculate_ssim_score
 
 load_dotenv()
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_GROUP_ID = os.getenv("TELEGRAM_GROUP_ID")
+SSIM_THRESHOLD = os.getenv("SSIM_THRESHOLD", 0.9)
 
 logger = logging.getLogger('Alarm PI')
 logger.setLevel(logging.INFO)
@@ -84,8 +86,12 @@ def motion_detected(gpio, level, tick):
         time.sleep(1)
         os.path.dirname(os.path.abspath(__file__)) + '../captures'
         date_str = datetime.datetime.now().strftime("%d%m%d-%H%M%S")
-        image_filenames = camera.capture_images(os.path.dirname(os.path.abspath(__file__)) + '/../captures', date_str, 4)
-        queue.put_nowait({"image_paths": image_filenames})
+        image_filenames = camera.capture_images(os.path.dirname(os.path.abspath(__file__)) + '/../captures', date_str,
+                                                4)
+        if (confidence_score := calculate_ssim_score(camera.get_last_raw_images(), alarm_threshold=SSIM_THRESHOLD)) > 0:
+            queue.put_nowait({"image_paths": image_filenames, "confidence_score": confidence_score})
+        else:
+            logger.info("No notifications sent due to SSIM result")
 
 
 def button_pressed(gpio, level, tick):

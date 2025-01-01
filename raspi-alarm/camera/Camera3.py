@@ -17,7 +17,7 @@ class Camera3:
 
     def _pre_compress_callback(self, request):
         with MappedArray(request, "main") as m:
-            self._raw_images.append(m.array)
+            self._raw_images.append(m.array.copy())
             if self._should_add_timestamp:
                 ts = time.strftime("%d.%m.%Y %X%z")
                 cv2.putText(m.array, ts, (0, 50), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 2)

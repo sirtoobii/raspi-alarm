@@ -68,7 +68,7 @@ class TelegramBot:
             if item is not None:
                 if isinstance(item, dict):
                     if "image_paths" in item:
-                        await self.notify_motion_detected(item.get("image_paths"), item.get("confidence_level"))
+                        await self.notify_motion_detected(item.get("image_paths"), item.get("confidence_score"))
                         self.logger.info("Images sent")
             await asyncio.sleep(1)
 

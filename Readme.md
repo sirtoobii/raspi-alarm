@@ -1,18 +1,19 @@
 # Raspberry PI Alarm
 
 Yet another Raspberry PI alarm system. It monitors an area using a passive infrared sensor and if motion is detected,
-the camara captures 4 pictures which are then sent to a configurable Telegram group or user.
-Moreover, the system's main functions are controlled using a Telegram bot. In order to further bring down the number of
-_ghosts_ (aka false positives), SSIM is used to measure the similarity of the captured images and notification is inhibited
-if not meeting the configurable threshold value.
+the camara captures five pictures which are then sent to a configurable Telegram group or user.
+Moreover, the system's main functions are controlled using a Telegram bot. To further bring down the number of
+_ghosts_ (aka false positives), [YoloV11n](https://docs.ultralytics.com/models/yolo11/) is used to check for persons in the captured images
 
 ![overview.png](img/overview.png)
 
 ## Tech stack
 
 The main program builds upon Python's `asyncIO` library and is using [aiogram3](https://aiogram.dev/) to interact with
-Telegram, [picamer2](https://github.com/raspberrypi/picamera2) to control the camera and finally [pigpio](https://abyz.me.uk/rpi/pigpio/index.html) for interfacing
-with the GPIO.
+Telegram, [Picamera2](https://github.com/raspberrypi/picamera2) to control the camera and
+finally [pigpio](https://abyz.me.uk/rpi/pigpio/index.html) for interfacing
+with the GPIO. For development purposes, there is also a more generic [LinuxCamera](raspi-alarm/camera/linux_camera.py)
+which allows development on a "normal" linux machine.
 
 ## Used hardware
 
@@ -28,7 +29,7 @@ with the GPIO.
 ## Setup
 
 - Get your telegram bot token by talking with [@botfather](https://t.me/botfather)
-- Create group, [get group ID](https://stackoverflow.com/a/32572159)
+- Create a telegram group, [get group ID](https://stackoverflow.com/a/32572159)
 - Add your bot to this group
 - Clone this repository and install requirements:
   ```bash
@@ -61,9 +62,9 @@ with the GPIO.
 
 ![wiring_diagram.png](img/wiring_diagram.png)
 
-
 ## Closing words
 
-This software was written with the best of intentions and I take no responsibility for any potential damage resulting from its use. 
+This software was written with the best of intentions, and I take no responsibility for any potential damage resulting
+from its use.
 Feel free to study, use and adapt. 
 

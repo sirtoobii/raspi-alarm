@@ -16,7 +16,7 @@ class PersonDetectionResult:
     @property
     def max_confidence_score(self) -> float:
         if len(self.confidence_scores) > 0:
-            return max(self.confidence_scores)
+            return float(max(self.confidence_scores))
         return 0.0
 
 
@@ -25,6 +25,10 @@ class Yolo11Engine:
 
     @classmethod
     def detect_person(cls, frame: ndarray) -> PersonDetectionResult:
+        """
+        Detect a person in a single frame
+        :param frame: ndarray
+        """
         results = cls.model.predict(source=frame, classes=[0], verbose=False)
         _r = results[0]
         return PersonDetectionResult(

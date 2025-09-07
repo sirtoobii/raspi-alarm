@@ -6,7 +6,8 @@ Wants=network-online.target
 [Service]
 Restart=always
 Type=simple
-ExecStart=<checkout_dir>/venv/bin/python3 <checkout_dir>/raspi-alarm/main.py
+WorkingDirectory=<checkout_dir>/raspi-alarm
+ExecStart=<checkout_dir>/venv/bin/python3 main.py
 User=<checkout_user>
 Group=<checkout_group>
 

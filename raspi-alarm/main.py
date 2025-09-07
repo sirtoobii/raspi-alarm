@@ -96,9 +96,11 @@ def motion_detected(gpio, level, tick):
             for frame in cam.frames(wait_between_captures_sec=1.5, n_frames=CAPTURE_N_IMAGES, add_timestamp=True):
                 result = yolo_engine.detect_person(frame)
                 images.append(result.annotated_frame)
-                if result.max_confidence_score > PERSON_MIN_CONFIDENCE:
+                _max_confidence = result.max_confidence_score
+                if _max_confidence > PERSON_MIN_CONFIDENCE:
                     person_detected = True
-                    confidence_score = result.max_confidence_score
+                    if confidence_score < _max_confidence:
+                        confidence_score = _max_confidence
 
         if person_detected:
             image_paths = LinuxCamera.save_images(images, prefix="raspi", destination_folder="../captures")

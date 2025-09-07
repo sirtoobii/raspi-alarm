@@ -28,7 +28,7 @@ class LinuxCamera:
         self.cap: cv2.VideoCapture | None = None
 
     def __enter__(self):
-        self.cap = cv2.VideoCapture(self.device)
+        self.cap = cv2.VideoCapture(self.device, cv2.CAP_V4L2)
         self.cap.set(cv2.CAP_PROP_FPS, self.fps)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
@@ -47,7 +47,7 @@ class LinuxCamera:
             start_frame = time.time()
             ret, frame = self.cap.read()
             if not ret:
-                break
+                raise RuntimeError("Error when trying to capture image. If this is a raspi, use RaspiCamera instead")
             if add_timestamp:
                 frame = LinuxCamera.add_timestamp(frame)
             yield frame
@@ -70,3 +70,10 @@ class LinuxCamera:
             cv2.imwrite(_file_path, raw_image, [cv2.IMWRITE_JPEG_QUALITY, 90])
             image_paths.append(_file_path)
         return image_paths
+
+
+if __name__ == '__main__':
+    print("Starting...")
+    with LinuxCamera(0) as cam:
+        for frame in cam.frames(wait_between_captures_sec=1, n_frames=4):
+            print(frame)

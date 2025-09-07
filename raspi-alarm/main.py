@@ -10,9 +10,9 @@ from dotenv import load_dotenv
 from numpy import ndarray
 
 from gpio.GPIOBridge import GPIOBridge
-from camera.Camera3 import Camera3
 from telegram.TelegramBot import TelegramBot
 from camera.linux_camera import LinuxCamera
+from camera.raspi_camera import RaspiCamera
 from analyze.yolo import Yolo11Engine
 
 load_dotenv()
@@ -33,7 +33,6 @@ logger.addHandler(ch)
 queue = asyncio.Queue()
 pi = pigpio.pi()
 relay_board = GPIOBridge(pi=pi)
-camera = Camera3()
 yolo_engine = Yolo11Engine()
 
 PIR = 17
@@ -93,7 +92,7 @@ def motion_detected(gpio, level, tick):
         person_detected: bool = False
         images: list[ndarray] = []
         confidence_score: float = 0
-        with LinuxCamera(0, height=640, width=480) as cam:
+        with RaspiCamera(0, height=1280, width=720) as cam:
             for frame in cam.frames(wait_between_captures_sec=1, n_frames=CAPTURE_N_IMAGES, add_timestamp=True):
                 result = yolo_engine.detect_person(frame)
                 images.append(result.annotated_frame)
@@ -106,7 +105,7 @@ def motion_detected(gpio, level, tick):
             print(image_paths)
             # queue.put_nowait({"image_paths": image_paths, "confidence_score": confidence_score})
         else:
-            logger.info("No notifications sent because there was no person in the image (confidence less than 85%)")
+            logger.info(f"No notifications sent because there was no person in the image (confidence less than {PERSON_MIN_CONFIDENCE*100}%)")
 
 
 def button_pressed(gpio, level, tick):

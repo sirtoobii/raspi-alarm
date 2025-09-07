@@ -1,7 +1,6 @@
 import asyncio
 import datetime
 import signal
-import time
 
 import pigpio
 import os
@@ -10,7 +9,6 @@ from dotenv import load_dotenv
 from gpio.GPIOBridge import GPIOBridge
 from camera.Camera3 import Camera3
 from telegram.TelegramBot import TelegramBot
-from analize.ssim import calculate_ssim_score
 
 load_dotenv()
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")

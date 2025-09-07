@@ -5,3 +5,4 @@ playground.py
 __pycache__*
 captures/*
 !captures/.do_not_ignore
+*.pt

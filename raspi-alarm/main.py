@@ -1,20 +1,26 @@
 import asyncio
 import datetime
 import signal
+import time
 
 import pigpio
 import os
 import logging
 from dotenv import load_dotenv
+from numpy import ndarray
+
 from gpio.GPIOBridge import GPIOBridge
 from camera.Camera3 import Camera3
 from telegram.TelegramBot import TelegramBot
+from camera.linux_camera import LinuxCamera
+from analyze.yolo import Yolo11Engine
 
 load_dotenv()
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_GROUP_ID = os.getenv("TELEGRAM_GROUP_ID")
-SSIM_THRESHOLD = os.getenv("SSIM_THRESHOLD", 0.9)
-CROP_TO_N_PERCENT = os.getenv("CROP_TO_N_PERCENT", 0)
+CAPTURE_N_IMAGES = int(os.getenv("CAPTURE_N_IMAGES", 5))
+PERSON_MIN_CONFIDENCE = float(os.getenv("PERSON_MIN_CONFIDENCE", 0.85))
+
 
 logger = logging.getLogger('Alarm PI')
 logger.setLevel(logging.INFO)
@@ -28,6 +34,7 @@ queue = asyncio.Queue()
 pi = pigpio.pi()
 relay_board = GPIOBridge(pi=pi)
 camera = Camera3()
+yolo_engine = Yolo11Engine()
 
 PIR = 17
 BUTTON = 6
@@ -82,15 +89,24 @@ def motion_detected(gpio, level, tick):
         logger.info("Motion detected")
         relay_board.set_channel(1, True, duration=10)
         relay_board.set_led(2, True, duration_secs=10, blink=True)
-        os.path.dirname(os.path.abspath(__file__)) + '../captures'
-        date_str = datetime.datetime.now().strftime("%d%m%d-%H%M%S")
-        image_filenames = camera.capture_images(os.path.dirname(os.path.abspath(__file__)) + '/../captures', date_str,
-                                                5)
-        if (confidence_score := calculate_ssim_score(camera.get_last_raw_images(), alarm_threshold=SSIM_THRESHOLD,
-                                                     crop_top_percent=int(CROP_TO_N_PERCENT))) > 0:
-            queue.put_nowait({"image_paths": image_filenames, "confidence_score": confidence_score})
+        time.sleep(1)
+        person_detected: bool = False
+        images: list[ndarray] = []
+        confidence_score: float = 0
+        with LinuxCamera(0, height=640, width=480) as cam:
+            for frame in cam.frames(wait_between_captures_sec=1, n_frames=CAPTURE_N_IMAGES, add_timestamp=True):
+                result = yolo_engine.detect_person(frame)
+                images.append(result.annotated_frame)
+                if result.max_confidence_score > PERSON_MIN_CONFIDENCE:
+                    person_detected = True
+                    confidence_score = result.max_confidence_score
+
+        if person_detected:
+            image_paths = LinuxCamera.save_images(images, prefix="raspi", destination_folder="../captures")
+            print(image_paths)
+            # queue.put_nowait({"image_paths": image_paths, "confidence_score": confidence_score})
         else:
-            logger.info("No notifications sent due to SSIM result")
+            logger.info("No notifications sent because there was no person in the image (confidence less than 85%)")
 
 
 def button_pressed(gpio, level, tick):

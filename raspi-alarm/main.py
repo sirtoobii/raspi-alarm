@@ -19,7 +19,7 @@ load_dotenv()
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_GROUP_ID = os.getenv("TELEGRAM_GROUP_ID")
 CAPTURE_N_IMAGES = int(os.getenv("CAPTURE_N_IMAGES", 5))
-PERSON_MIN_CONFIDENCE = float(os.getenv("PERSON_MIN_CONFIDENCE", 0.85))
+PERSON_MIN_CONFIDENCE = float(os.getenv("PERSON_MIN_CONFIDENCE", 0.60))
 
 
 logger = logging.getLogger('Alarm PI')
@@ -93,7 +93,7 @@ def motion_detected(gpio, level, tick):
         images: list[ndarray] = []
         confidence_score: float = 0
         with RaspiCamera(0, height=1280, width=720) as cam:
-            for frame in cam.frames(wait_between_captures_sec=1, n_frames=CAPTURE_N_IMAGES, add_timestamp=True):
+            for frame in cam.frames(wait_between_captures_sec=1.5, n_frames=CAPTURE_N_IMAGES, add_timestamp=True):
                 result = yolo_engine.detect_person(frame)
                 images.append(result.annotated_frame)
                 if result.max_confidence_score > PERSON_MIN_CONFIDENCE:
@@ -102,10 +102,11 @@ def motion_detected(gpio, level, tick):
 
         if person_detected:
             image_paths = LinuxCamera.save_images(images, prefix="raspi", destination_folder="../captures")
-            print(image_paths)
-            # queue.put_nowait({"image_paths": image_paths, "confidence_score": confidence_score})
+            logger.warning(f"Person detected {round(confidence_score*100)}% > {PERSON_MIN_CONFIDENCE*100}%")
+            logger.info(image_paths)
+            queue.put_nowait({"image_paths": image_paths, "confidence_score": confidence_score})
         else:
-            logger.info(f"No notifications sent because there was no person in the image (confidence less than {PERSON_MIN_CONFIDENCE*100}%)")
+            logger.info(f"No notifications sent because there was no person in the image: {confidence_score*100}% < {PERSON_MIN_CONFIDENCE*100}%)")
 
 
 def button_pressed(gpio, level, tick):
